@@ -6,7 +6,7 @@ Programmable optic sensor gui is graphical programmer, debugger and logger, for 
 
 - Freepik in business from www.flaticon.com
 - Gregor Cresnar in Tools and utensils from www.flaticon.com
-- [Lucy G in signs from www.flaticon.com
+- Lucy G in signs from www.flaticon.com
 - Freepik in technology from www.flaticon.com
 - Freepik in interface from www.flaticon.com
 - Dave Gandy in shapes from www.flaticon.com
