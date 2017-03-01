@@ -199,7 +199,7 @@ class MainWindow(QMainWindow):
         self.debugwindow.showMaximized()
 
     def help(self):
-        text = "<qt>Programmable optic sensor GUI, is part of a thesis with a title:</qt><qt>Koncept programabilnega optičnega senzorja (The concept of </qt><qt> programmable optical sensor), from Andrej Zadnik of University of Ljubljana Faculty of Electrical Engineering.</qt><qt>Source code is located in github repository:</qt> <qt><a href = https://github.com/andrejzadnik/programmable-optic-sensor>\n https://github.com/andrejzadnik/programmable-optic-sensor</a></qt>"        
+        text = "<qt>Programmable optic sensor GUI, is part of a thesis with a title:</qt><qt>Koncept programabilnega optičnega senzorja (The concept of </qt><qt> programmable optical sensor), from Andrej Zadnik of University of Ljubljana Faculty of Electrical Engineering.</qt><qt>Source code is located in github repository:</qt> <qt><a href = https://github.com/andrejzadnik/programmable-optic-sensor>\n https://github.com/andrejzadnik/programmable-optic-sensor-gui</a></qt>"        
         
         help_message = QMessageBox.information(self, 'About', text, QMessageBox.Ok)
 
@@ -682,10 +682,16 @@ class DebugWindow(QWidget):
 
     def send(self):
         command = self.lineEdit.text()
-        self.serial.write(command.encode('ascii'))
-        self.clock = dt.now()
-        self.textEdit.setTextColor(Qt.blue)
-        self.textEdit.append(str(self.clock.strftime("%d.%m.%Y %H:%M")) + '<- ' + command)
+
+        if command == "clr":
+            self.textEdit.clear()
+
+        else:
+            self.serial.write(command.encode('ascii'))
+            self.clock = dt.now()
+            self.textEdit.setTextColor(Qt.blue)
+            self.textEdit.append(str(self.clock.strftime("%d.%m.%Y %H:%M")) + '<- ' + command)
+
         time.sleep(0.2)
 
     def receive(self, message):
@@ -724,12 +730,10 @@ class DebugThread(QThread):
     def run(self):
         while True:
             if self.kill_thread == 0:
-                time.sleep(0.2)
                 s = self.ser.read(0)
                 line = self.ser.readline()
 
                 #line = line.decode("utf-8")
-
 
                 if line in (b'\x00\x00\x00\x00\x00\x00\x000\x00\n', b'0\x00\n'):
                     self.debug_thread.emit("0")
@@ -737,7 +741,7 @@ class DebugThread(QThread):
                 elif line == b'1\x00\n':
                     self.debug_thread.emit("1")
 
-                elif len(line) == 10:
+                elif len(line) >= 10:
                     line = line.strip()
                     line = line.decode("utf-8")
 
@@ -752,17 +756,21 @@ class DebugThread(QThread):
                     for i in range(0, len(message)):
                         e += str(message[i])
 
-                    self.debug_thread.emit(e)
+                    f = e.strip()
 
-                elif len(line) > 10:
-                    line = line.strip()
-                    #line = line.decode("utf-8")
+                    self.debug_thread.emit(f)
 
-                    line = str(line)
-                    self.debug_thread.emit(line)
+                #elif len(line) > 10:
+                 #   line = line.strip()
+                  #  #line = line.decode("utf-8")
+
+                   # line = str(line)
+                    #self.debug_thread.emit(line)
 
                 else:
                     pass
+
+                time.sleep(0.4)
 
             elif self.kill_thread == 1:
                 self.ser.close()
@@ -926,6 +934,8 @@ class MplDrawGraph(QWidget):
     def __init__(self):
         super(MplDrawGraph, self).__init__()
 
+        draw = 0
+
         self.port = " "
         self.pause = 0  # je bila tipka Pause pritisnjena
         self.button_log = 0  # je bila tipka Ok (log file) pritisnjena
@@ -933,6 +943,8 @@ class MplDrawGraph(QWidget):
         self.log_data = 0 # log data je izbran
         self.lenght = 10 # amplituda
         self.stoped = 1 #vse je izklopljeno
+        self.step_mode_enable = 0 #step nacin
+        self.one_step = 0 #ne naredi koraka
 
         date = dt.now()
         self.log_name = "log_" + date.strftime("%Y%d%m") + ".txt" #default name log file
@@ -944,8 +956,9 @@ class MplDrawGraph(QWidget):
 
     def closeEvent(self, event):
         if self.port != " ":
-            self.drawthread.terminate()
-            #os.system("chmod 444 " + self.log_name) #read only log file
+            if draw == 1:
+                self.drawthread.terminate()
+                #os.system("chmod 444 " + self.log_name) #read only log file
 
         if self.button_log == 1:
             self.log_data.close()
@@ -972,7 +985,7 @@ class MplDrawGraph(QWidget):
         self.horizontalLayout.addWidget(self.mpl_toolbar)
 
         self.verticalLayoutWidget = QWidget(MplDrawGraph)
-        self.verticalLayoutWidget.setGeometry(QRect(1100, 10, 121, 371))#1100, 10, 130, 200
+        self.verticalLayoutWidget.setGeometry(QRect(1100, 10, 121, 571))#1100, 10, 130, 200
         self.verticalLayoutWidget.setObjectName("verticalLayoutWidget")
         self.verticalLayout = QVBoxLayout(self.verticalLayoutWidget)
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
@@ -1032,16 +1045,51 @@ class MplDrawGraph(QWidget):
         self.horizontalSlider.setObjectName("horizontalSlider")
         self.verticalLayout.addWidget(self.horizontalSlider)
 
+        spacerItem3 = QSpacerItem(20, 3, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.verticalLayout.addItem(spacerItem3)
+
+        self.label = QLabel()
+        self.label.setText("Value:")
+        self.verticalLayout.addWidget(self.label)
+
+        spacerItem5 = QSpacerItem(20, 3, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.verticalLayout.addItem(spacerItem5)
+
+        self.steplineEdit = QLineEdit(self.verticalLayoutWidget)
+        self.steplineEdit.setGeometry(QRect(5, 50, 151, 20))
+        self.steplineEdit.setToolTip("")
+        self.steplineEdit.setText("")
+        self.steplineEdit.setDisabled(True)
+        self.steplineEdit.setObjectName("step_value")
+        self.verticalLayout.addWidget(self.steplineEdit)
+
         spacerItem2 = QSpacerItem(20, 15, QSizePolicy.Minimum, QSizePolicy.Fixed)
         self.verticalLayout.addItem(spacerItem2)
+
+        self.checkBox_step = QCheckBox(self.verticalLayoutWidget)
+        self.checkBox_step.setEnabled(True)
+        self.checkBox_step.setText("Step mode")
+        self.verticalLayout.addWidget(self.checkBox_step)
+
+        spacerItem4 = QSpacerItem(20, 3, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.verticalLayout.addItem(spacerItem4)
+
+        self.step_button = QPushButton(self.verticalLayoutWidget)
+        self.step_button.setText("Step")
+        self.step_button.setDisabled(True)
+        # self.step_button.setStyleSheet("background-color: yellow")
+        self.verticalLayout.addWidget(self.step_button)
+
+        spacerItem6 = QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.verticalLayout.addItem(spacerItem6)
 
         self.checkBox_2 = QCheckBox(self.verticalLayoutWidget)
         self.checkBox_2.setEnabled(True)
         self.checkBox_2.setText("Make log file")
         self.verticalLayout.addWidget(self.checkBox_2)
 
-        spacerItem3 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
-        self.verticalLayout.addItem(spacerItem3)
+        spacerItem7 = QSpacerItem(10, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.verticalLayout.addItem(spacerItem7)
 
         self.horizontalLayoutWidget = QWidget(MplDrawGraph)
         self.horizontalLayoutWidget.setGeometry(QRect(10, 10, 661, 541))
@@ -1053,7 +1101,7 @@ class MplDrawGraph(QWidget):
 
         self.groupBox = QGroupBox(MplDrawGraph)
         self.groupBox.setEnabled(False)
-        self.groupBox.setGeometry(QRect(1100, 300, 230, 95))# 1005, 570, 230, 95
+        self.groupBox.setGeometry(QRect(1100, 430, 230, 95))# 1005, 570, 230, 95
 
         sizePolicy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
@@ -1103,6 +1151,10 @@ class MplDrawGraph(QWidget):
 
         self.horizontalSlider.valueChanged.connect(self.amplitude) # slider amplituda
 
+        self.checkBox_step.stateChanged.connect(self.step_mode) #stepmode
+
+        self.step_button.clicked.connect(self.make_one_step)
+
         self.checkBox_2.stateChanged.connect(self.enable_log)  # ustvari log file
 
         self.pushButton_2.clicked.connect(self.button_start_log)  # Ok log file
@@ -1115,11 +1167,13 @@ class MplDrawGraph(QWidget):
         self.port = port
 
     def button_adc(self):
+        draw = 1
         self.stoped = 0
         button_id = "button_adc"
         self.draw_selector(button_id)
 
     def button_val(self):
+        draw = 1
         self.stoped = 0
         button_id = "button_val"
         self.draw_selector(button_id)
@@ -1145,18 +1199,40 @@ class MplDrawGraph(QWidget):
     def enable_plot(self):
         if self.horizontalSlider.isEnabled() == True:
             self.horizontalSlider.setEnabled(False)
+            self.steplineEdit.setDisabled(True)
+            self.steplineEdit.clear()
+
             self.draw_data = 0
 
             plt.clf() # zapremo figure
 
         else:
             self.horizontalSlider.setEnabled(True)
+            self.steplineEdit.setDisabled(False)
+            self.steplineEdit.clear()
+
             self.draw_data = 1
 
             self.init_figure() # inicializiramo figure
 
     def amplitude(self, val):
         self.lenght = val
+
+    def step_mode(self):
+        if self.step_mode_enable == 0:
+
+            self.step_button.setDisabled(False)
+
+            self.step_mode_enable = 1
+
+        elif self.step_mode_enable == 1:
+
+            self.step_button.setDisabled(True)
+
+            self.step_mode_enable = 0
+
+    def make_one_step(self):
+        self.one_step = 1
 
     def enable_log(self):
         if self.button_log == 0:
@@ -1180,26 +1256,26 @@ class MplDrawGraph(QWidget):
             self.log_style = "%Y-%d-%m %H:%M:%S"
             self.log_vejica = " , "
 
+        elif style == "%H:%M:%S , data":
+            self.log_style = "%H:%M:%S"
+            self.log_vejica = " , "
+
         elif style == "%d-%m %H:%M:%S , data":
             self.log_style = "%d-%m %H:%M:%S"
             self.log_vejica = " , "
 
         elif style == "%d-%m-%H:%M:%S,data":
-            self.log_style = "%d-%m-%H:%M:%S"
+            self.log_style = "%d-%m %H:%M:%S"
             self.log_vejica = ","
 
         elif style == "%H:%M:%S,data":
-            self.log_style = "%H:%M:%S"
+            self.log_style = "H:%M:%S"
             self.log_vejica = ","
 
         elif style == "%H%M%S,data":
-            self.log_style = "H%M%S"
+            self.log_style = "%H%M%S"
             self.log_vejica = ","
-
-        elif style == "%H:%M:%S , data":
-            self.log_style = "%H:%M:%S"
-            self.log_vejica = " , "
-
+                    
     def log_name_selected(self, name):
         self.log_name = name
 
@@ -1286,7 +1362,7 @@ class MplDrawGraph(QWidget):
                     self.pushButton.setStyleSheet("background-color: white")
                     self.pushButton_3.setStyleSheet("background-color: white")
 
-                    time.sleep(0.2)
+                    time.sleep(0.8)
 
                     ser = serial.Serial(
                         port=self.port,
@@ -1332,55 +1408,66 @@ class MplDrawGraph(QWidget):
             pass
 
     def change_value(self, value):
-        if self.draw_data == 1 and self.pause == 0:
-            self.ax.clear()
 
-            self.ax.set_title("Izris trenutne vrednosti")
-            self.ax.set_xlabel('Čas [h:m:s]')  # x os label
+        if self.step_mode_enable == 1 and self.one_step == 1 or self.step_mode_enable == 0:
 
-            self.x.append(dt.now())
-            self.y.append(value)
+            if self.draw_data == 1 and self.pause == 0 and self.stoped == 0:
+                self.ax.clear()
 
-            background = self.figure.canvas.copy_from_bbox(self.ax.bbox)
+                self.ax.set_title("Izris trenutne vrednosti")
+                self.ax.set_xlabel('Čas [h:m:s]')  # x os label
 
-            self.ax.plot(self.x, self.y)
-            self.ax.xaxis.set_major_formatter(md.DateFormatter('%H:%M:%S'))
-            for label in self.ax.xaxis.get_ticklabels():
-                label.set_rotation(45)
+                self.x.append(dt.now())
+                self.y.append(value)
 
-            if self.selector == 1:
-                self.ax.set_ylabel('Trenutna ADC vrednost senzorja')  # y os label
-                self.axes.set_ylim([-0.4, 1020])
+                background = self.figure.canvas.copy_from_bbox(self.ax.bbox)
 
-            if self.selector == 2:
-                self.ax.set_ylabel('Trenutna vrednost izhoda senzorja [1 = ON], [0 = OFF]')  # y os label
-                self.axes.set_ylim([-0.1, 1.1])
-
-            if len(self.x) > self.lenght:
-                del self.y[0]
-                del self.x[0]
-            self.canvas.draw()
-
-        if self.button_log == 1 and self.pause == 0:
-            if self.header_created == 0:
-                self.header_created = 1
-
-                self.log_data.writelines(["#TITLE = " + "Izris trenutne vrednosti" + "\n"])
-                self.log_data.writelines(["#X = " + "Cas [h:m:s]" + "\n"])
+                self.ax.plot(self.x, self.y)
+                self.ax.xaxis.set_major_formatter(md.DateFormatter('%H:%M:%S'))
+                for label in self.ax.xaxis.get_ticklabels():
+                    label.set_rotation(45)
 
                 if self.selector == 1:
-                    self.log_data.writelines(["#Y = " + "Trenutna ADC vrednost senzorja" + "\n"])
+                    self.ax.set_ylabel('Trenutna ADC vrednost senzorja')  # y os label
+                    self.axes.set_ylim([-0.4, 1020])
 
-                elif self.selector == 2:
-                    self.log_data.writelines(["#Y = " + "Trenutna vrednost izhoda senzorja [1 = ON], [0 = OFF]" + "\n"])
+                if self.selector == 2:
+                    self.ax.set_ylabel('Trenutna vrednost izhoda senzorja [1 = ON], [0 = OFF]')  # y os label
+                    self.axes.set_ylim([-0.1, 1.1])
 
-                self.log_data.writelines(["#------------------------------------------------------------------" + "\n"])
+                if len(self.x) > self.lenght:
+                    del self.y[0]
+                    del self.x[0]
+                self.canvas.draw()
 
-            datum = dt.now()
-            self.log_data.writelines([datum.strftime(self.log_style) + self.log_vejica + str(value) + "\n"])
+                self.steplineEdit.clear()
+                self.steplineEdit.setText(str(value))
 
-        else:
-            pass
+            if self.button_log == 1 and self.pause == 0 and self.stoped == 0:
+                if self.header_created == 0:
+                    self.header_created = 1
+
+                    self.log_data.writelines(["#TITLE = " + "Izris trenutne vrednosti" + "\n"])
+                    self.log_data.writelines(["#X = " + "Cas [h:m:s]" + "\n"])
+
+                    if self.selector == 1:
+                        self.log_data.writelines(["#Y = " + "Trenutna ADC vrednost senzorja" + "\n"])
+
+                    elif self.selector == 2:
+                        self.log_data.writelines(
+                            ["#Y = " + "Trenutna vrednost izhoda senzorja [1 = ON], [0 = OFF]" + "\n"])
+
+                    self.log_data.writelines(
+                        ["#------------------------------------------------------------------" + "\n"])
+
+                datum = dt.now()
+                self.log_data.writelines([datum.strftime(self.log_style) + self.log_vejica + str(value) + "\n"])
+
+            else:
+                pass
+
+            if self.step_mode_enable == 1 and self.one_step == 1:
+                self.one_step = 0
 
 
 class DrawThread(QThread):
@@ -1406,7 +1493,7 @@ class DrawThread(QThread):
     def run(self):
         while True:
             if self.kill_thread == 0:
-                time.sleep(0.3)
+                time.sleep(0.1)
                 s = self.ser.read(0)
                 line = self.ser.readline()
 
@@ -1619,14 +1706,18 @@ class MplLogPlotter(QWidget):
                 header.append(lines[line])
 
             elif line > 3:
-                if lines[line] != " ":
-                    x, y = lines[line].split(',')
+                if lines[line] not in ("", " "):
+
+                    x, y = lines[line].split(",")
 
                     # odstranimo presledke iz vrednosti
                     y = y.strip(" ")
 
                     xs.append(x)
                     self.ys.append(y)
+
+                elif lines[line] == " ":
+                    pass
 
         # log file header
         for n in range(0, len(header)):
@@ -2071,7 +2162,7 @@ if __name__ == '__main__':
 
     mainWin = MainWindow()
     mainWin.showMaximized()
-    # mainWin.show()
+    #mainWin.show()
 
     '''
       ---- Splash screen -----
@@ -2081,6 +2172,9 @@ if __name__ == '__main__':
     splash.setFlags(Qt.FramelessWindowHint | Qt.Window | Qt.WindowSystemMenuHint)
     splash.setX(550)
     splash.setY(400)
+
+    #splash.setX(330)
+    #splash.setY(200)
     splash.show()
 
     for i in range(0, 2000000):
