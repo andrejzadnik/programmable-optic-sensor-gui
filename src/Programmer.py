@@ -199,7 +199,7 @@ class MainWindow(QMainWindow):
         self.debugwindow.showMaximized()
 
     def help(self):
-        text = "<qt>Programmable optic sensor GUI, is part of a thesis with a title:</qt><qt>Koncept programabilnega optičnega senzorja (The concept of </qt><qt> programmable optical sensor), from Andrej Zadnik of University of Ljubljana Faculty of Electrical Engineering.</qt><qt>Source code is located in github repository:</qt> <qt><a href = https://github.com/andrejzadnik/programmable-optic-sensor>\n https://github.com/andrejzadnik/programmable-optic-sensor-gui</a></qt>"        
+        text = "<qt>Programmable optic sensor GUI, is part of a thesis with a title:</qt><qt>Zasnova programabilnega optičnega senzorja (design of the </qt><qt> programmable optical sensor), from Andrej Zadnik of University of Ljubljana Faculty of Electrical Engineering.</qt><qt>Source code is located in github repository:</qt> <qt><a href = https://github.com/andrejzadnik/programmable-optic-sensor>\n https://github.com/andrejzadnik/programmable-optic-sensor-gui</a></qt>"        
         
         help_message = QMessageBox.information(self, 'About', text, QMessageBox.Ok)
 

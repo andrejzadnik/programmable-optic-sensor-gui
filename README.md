@@ -1,6 +1,6 @@
 # Programmable-optic-sensor-gui
 
-Programmable optic sensor gui is graphical programmer, debugger and logger, for theasy project named: Concept of programmable optic sensor (Koncept programabilnega optičnega senzorja) by Andrej Zadnik from University of Ljubljana Faculty of Electrical Engineering.
+Programmable optic sensor gui is graphical programmer, debugger and logger, for theasy project named: Design of programmable optic sensor (Zasnova programabilnega optičnega senzorja) by Andrej Zadnik from University of Ljubljana Faculty of Electrical Engineering.
 
 # Icon Credits
 
